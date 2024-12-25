@@ -113,7 +113,6 @@ id:
     returned: always
 '''
 
-import requests
 import yaml
 import sys
 
@@ -128,7 +127,6 @@ except ImportError as e:
     print(e)
     sys.exit(1)
 
-import yaml
 from yandexcloud import SDK
 from yandex.cloud.lockbox.v1.secret_service_pb2 import CreateSecretRequest, ListSecretsRequest, \
      DeleteSecretRequest, GetSecretRequest, AddVersionRequest, DeactivateSecretRequest, ActivateSecretRequest
