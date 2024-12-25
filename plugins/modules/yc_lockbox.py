@@ -113,82 +113,89 @@ id:
     returned: always
 '''
 
-
-import requests
 import yaml
+import sys
+
+def check_module_installed(module_name):
+    import importlib.util
+    if importlib.util.find_spec(module_name) is None:
+        raise ImportError(f"The module '{module_name}' is not installed. Install it using 'pip install {module_name}'")
+
+try:
+    check_module_installed('yandexcloud')
+except ImportError as e:
+    print(e)
+    sys.exit(1)
+
+from yandexcloud import SDK
+from yandex.cloud.lockbox.v1.secret_service_pb2 import CreateSecretRequest, ListSecretsRequest, \
+     DeleteSecretRequest, GetSecretRequest, AddVersionRequest, DeactivateSecretRequest, ActivateSecretRequest
+     
+from yandex.cloud.lockbox.v1.secret_service_pb2_grpc import SecretServiceStub
+
 from ansible.module_utils.basic import AnsibleModule
 
 def create_secret(iam_token, folder_id, secret_name, secret_description, version_payload_entries, delete_protection):
-    url = "https://lockbox.api.cloud.yandex.net/lockbox/v1/secrets"
-    headers = {"Authorization": f"Bearer {iam_token}", "Content-Type": "application/json"}
-    payload = {
-        "folderId": folder_id,
-        "name": secret_name,
-        "description": secret_description,
-        "versionPayloadEntries": version_payload_entries,
-        "deletionProtection": delete_protection
-    }
-
-    response = requests.post(url, headers=headers, json=payload)
-    response.raise_for_status()
-    return response.json()
+    sdk = SDK(iam_token=iam_token)
+    secret_stub = sdk.client(SecretServiceStub)
+    create_request = CreateSecretRequest(
+        folder_id=folder_id,
+        name=secret_name,
+        description=secret_description,
+        version_payload_entries=version_payload_entries,
+        deletion_protection=delete_protection,
+    )
+    response = secret_stub.Create(create_request)
+    return response
 
 def list_secrets(iam_token, folder_id):
-    url = f"https://lockbox.api.cloud.yandex.net/lockbox/v1/secrets?folderId={folder_id}"
-    headers = {"Authorization": f"Bearer {iam_token}"}
-    
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-    return response.json()
+    sdk = SDK(iam_token=iam_token)
+    secret_stub = sdk.client(SecretServiceStub)
+    list_request = ListSecretsRequest(folder_id=folder_id)
+    response = secret_stub.List(list_request)
+    return response
 
 def get_secret(iam_token, secret_id):
-    url = f"https://lockbox.api.cloud.yandex.net/lockbox/v1/secrets/{secret_id}"
-    headers = {"Authorization": f"Bearer {iam_token}"}
-    
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-    return response.json()
+    sdk = SDK(iam_token=iam_token)
+    secret_stub = sdk.client(SecretServiceStub)
+    get_request= GetSecretRequest(secret_id=secret_id)
+    response = secret_stub.Get(get_request)
+    return response
 
 def delete_secret(iam_token, secret_id):
-    url = f"https://lockbox.api.cloud.yandex.net/lockbox/v1/secrets/{secret_id}"
-    headers = {"Authorization": f"Bearer {iam_token}"}
-    
-    response = requests.delete(url, headers=headers)
-    if response.status_code == 400:
-        error_message = response.json().get('message', '')
-        if 'deletion_protection' in error_message:
-            raise Exception(f"Secret with id '{secret_id}' is protected from deletion. Update 'deletion_protection' field to delete the secret.")
-    response.raise_for_status()
-    return response.json()
+    sdk = SDK(iam_token=iam_token)
+    secret_stub = sdk.client(SecretServiceStub)
+    delete_request = DeleteSecretRequest(secret_id=secret_id)
+    operation = secret_stub.Delete(delete_request)
+    return operation
+
 
 def update_secret(iam_token, secret_id, secret_description, version_payload_entries, current_version_id):
-    url = f"https://lockbox.api.cloud.yandex.net/lockbox/v1/secrets/{secret_id}:addVersion"
-    headers = {"Authorization": f"Bearer {iam_token}", "Content-Type": "application/json"}
-    payload = {
-        "description": secret_description,
-        "payloadEntries": version_payload_entries,
-        "baseVersionId": current_version_id
-    }
-
-    response = requests.post(url, headers=headers, json=payload)
-    response.raise_for_status()
-    return response.json()
+    sdk = SDK(iam_token=iam_token)
+    secret_stub = sdk.client(SecretServiceStub)
+    update_request = AddVersionRequest(
+        description=secret_description,
+        secret_id=secret_id,
+        payload_entries=version_payload_entries,
+        base_version_id=current_version_id,
+        )
+    operation = secret_stub.AddVersion(update_request)
+    
+    return operation
 
 def activate_secret(iam_token, secret_id):
-    url = f"https://lockbox.api.cloud.yandex.net/lockbox/v1/secrets/{secret_id}:activate"
-    headers = {"Authorization": f"Bearer {iam_token}", "Content-Type": "application/json"}
-
-    response = requests.post(url, headers=headers)
-    response.raise_for_status()
-    return response.json()
+    sdk = SDK(iam_token=iam_token)
+    secret_stub = sdk.client(SecretServiceStub)
+    deactivate_request = ActivateSecretRequest(secret_id=secret_id)
+    operation = secret_stub.Activate(deactivate_request)    
+    return operation
 
 def deactivate_secret(iam_token, secret_id):
-    url = f"https://lockbox.api.cloud.yandex.net/lockbox/v1/secrets/{secret_id}:deactivate"
-    headers = {"Authorization": f"Bearer {iam_token}", "Content-Type": "application/json"}
-
-    response = requests.post(url, headers=headers)
-    response.raise_for_status()
-    return response.json()
+    sdk = SDK(iam_token=iam_token)
+    secret_stub = sdk.client(SecretServiceStub)
+    deactivate_request = DeactivateSecretRequest(secret_id=secret_id)
+    operation = secret_stub.Deactivate(deactivate_request)    
+    return operation
 
 def load_secret_data_file(file_path):
     with open(file_path, 'r') as f:
@@ -220,20 +227,18 @@ def load_secret_data_file(file_path):
     return secret_data
 
 def main():
-    argument_spec = dict(
-        iam_token=dict(type='str', required=True, no_log=True),
-        folder_id=dict(type='str', required=False),
-        secret_name=dict(type='str', required=True),
-        secret_id=dict(type='str', required=False, default=''),
-        secret_description=dict(type='str', required=False, default=''),
-        text_payload_entries=dict(type='dict', required=False, default={}),
-        secret_data_file=dict(type='str', required=False, default=''),
-        state=dict(type='str', choices=['present', 'absent', 'update', 'deactivate', 'activate'], default='present'),
-        delete_protection=dict(type='bool', required=False, default=True),
-    )
-
     module = AnsibleModule(
-        argument_spec=argument_spec,
+        argument_spec = dict(
+            iam_token=dict(type='str', required=True, no_log=True),
+            folder_id=dict(type='str', required=False),
+            secret_name=dict(type='str', required=True),
+            secret_id=dict(type='str', required=False, default=''),
+            secret_description=dict(type='str', required=False, default=''),
+            text_payload_entries=dict(type='dict', required=False, default={}),
+            secret_data_file=dict(type='str', required=False, default=''),
+            state=dict(type='str', choices=['present', 'absent', 'update', 'deactivate', 'activate'], default='present'),
+            delete_protection=dict(type='bool', required=False, default=True),
+            ),
         supports_check_mode=True
     )
 
@@ -246,6 +251,13 @@ def main():
     secret_data_file = module.params['secret_data_file']
     state = module.params['state']
     delete_protection = module.params['delete_protection']
+    
+    STATUS_MAPPING = {
+        0: "STATUS_UNSPECIFIED",
+        1: "CREATING",
+        2: "ACTIVE",
+        3: "INACTIVE"
+        }
 
     try:
         combined_secret_data = text_payload_entries.copy()
@@ -257,75 +269,90 @@ def main():
                     module.fail_json(msg=f"Duplicate key '{key}' found in both text_payload_entries and secret_data_file.")
             combined_secret_data.update(secret_data_from_file)
 
-        version_payload_entries = [{'key': key, 'textValue': value} for key, value in combined_secret_data.items()]
+        version_payload_entries = [{'key': key, 'text_value': value} for key, value in combined_secret_data.items()]
         if len(version_payload_entries) > 32:
             raise ValueError("The number of keys in version_payload_entries exceeds the limit of 32.")
 
         if state == 'present':
             if not secret_id:
                 secrets_response = list_secrets(iam_token, folder_id)
-                if 'secrets' in secrets_response:
-                    secrets = secrets_response['secrets']
-                    for secret in secrets:
-                        if secret['name'] == secret_name:
-                            module.fail_json(msg=f"Secret with the same name already exists: {secret_name}")
+                for secret in secrets_response.secrets:
+                    if secret.name == secret_name:
+                        module.fail_json(msg=f"Secret with the same name already exists: {secret_name}")
             
             response = create_secret(iam_token, folder_id, secret_name, secret_description, version_payload_entries, delete_protection)
-            module.exit_json(changed=True, id=response['id'])
+            module.exit_json(changed=True, id=response.id)
         
         elif state == 'absent':
             if not secret_id:
                 secrets_response = list_secrets(iam_token, folder_id)
-                if 'secrets' not in secrets_response:
-                    module.exit_json(changed=False)
 
-                matching_secrets = [secret for secret in secrets_response['secrets'] if secret['name'] == secret_name]
+                if not secrets_response.secrets:
+                    module.fail_json(msg="No secrets in Lockbox")
+
+
+                matching_secrets = [
+                    secret for secret in secrets_response.secrets if secret.name == secret_name
+                ]
+
                 if len(matching_secrets) == 0:
-                    module.exit_json(changed=False)
+                    module.fail_json(msg=f"Secret with name '{secret_name}' not found")
                 elif len(matching_secrets) > 1:
                     module.fail_json(msg=f"Multiple secrets found with name: {secret_name}")
-                secret_id = matching_secrets[0]['id']
-            
+                
+                secret_id = matching_secrets[0].id
+                    
+          
             delete_secret(iam_token, secret_id)
             module.exit_json(changed=True)
-
+            
         elif state == 'update':
             if not secret_id:
                 secrets_response = list_secrets(iam_token, folder_id)
-                if 'secrets' not in secrets_response:
-                    module.fail_json(msg="No secrets for update")
-                elif 'secrets' in secrets_response:
-                    secrets = secrets_response['secrets']
-                    for secret in secrets:
-                        if secret['name'] == secret_name:
-                            module.fail_json(msg=f"Secret with the same name already exists: {secret_name} \nPlease, set secret_id for update correct secret!")
+                if not secrets_response.secrets:
+                    module.fail_json(msg="No secrets in Lockbox")
 
-                matching_secrets = [secret for secret in secrets_response['secrets'] if secret['name'] == secret_name]
-                secret_id = matching_secrets[0]['id']
-                current_version_id = matching_secrets[0]['currentVersion']['id']
+                matching_secrets = [
+                    secret for secret in secrets_response.secrets if secret.name == secret_name
+                ]
+
+                if len(matching_secrets) == 0:
+                    module.fail_json(msg=f"Secret with name '{secret_name}' not found")
+                elif len(matching_secrets) > 1:
+                    module.fail_json(msg=f"Secret with the same name already exists: {secret_name} \nPlease, set secret_id for update correct secret!")
+                
+                secret_id = matching_secrets[0].id
+                current_version_id = matching_secrets[0].current_version.id
             elif secret_id:
                 secrets_response = get_secret(iam_token, secret_id)
-                current_version_id = secrets_response['currentVersion']['id']
-
+                current_version_id = secrets_response.current_version.id
+           
             update_secret(iam_token, secret_id, secret_description, version_payload_entries, current_version_id)
             module.exit_json(changed=True)
+             
 
         elif state == 'deactivate':
+
             if not secret_id:
                 secrets_response = list_secrets(iam_token, folder_id)
-                if 'secrets' not in secrets_response:
-                    module.fail_json(msg="No secrets for deactivate")
-                elif 'secrets' in secrets_response:
-                    secrets = secrets_response['secrets']
-                    for secret in secrets:
-                        if secret['name'] == secret_name:
-                            module.fail_json(msg=f"Secret with the same name already exists: {secret_name} \nPlease, set secret_id for deactivate correct secret!")
+                if not secrets_response.secrets:
+                    module.fail_json(msg="No secrets in Lockbox")
 
-                matching_secrets = [secret for secret in secrets_response['secrets'] if secret['name'] == secret_name]
-                secret_id = matching_secrets[0]['id']
+                matching_secrets = [
+                    secret for secret in secrets_response.secrets if secret.name == secret_name
+                ]
+
+                if len(matching_secrets) == 0:
+                    module.fail_json(msg=f"Secret with name '{secret_name}' not found")
+                elif len(matching_secrets) > 1:
+                    module.fail_json(msg=f"Secret with the same name already exists: {secret_name} \nPlease, set secret_id for update correct secret!")
+                
+                secret_id = matching_secrets[0].id
 
             secrets_response = get_secret(iam_token, secret_id)
-            secret_status = secrets_response['status']
+            secret_status_code = secrets_response.status
+            secret_status = STATUS_MAPPING.get(secret_status_code, "UNKNOWN_STATUS")
+            
             if secret_status == 'ACTIVE':
                 deactivate_secret(iam_token, secret_id)
                 module.exit_json(changed=True)
@@ -335,19 +362,23 @@ def main():
         elif state == 'activate':
             if not secret_id:
                 secrets_response = list_secrets(iam_token, folder_id)
-                if 'secrets' not in secrets_response:
-                    module.fail_json(msg="No secrets for deactivate")
-                elif 'secrets' in secrets_response:
-                    secrets = secrets_response['secrets']
-                    for secret in secrets:
-                        if secret['name'] == secret_name:
-                            module.fail_json(msg=f"Secret with the same name already exists: {secret_name} \nPlease, set secret_id for activate correct secret!")
+                if not secrets_response.secrets:
+                    module.fail_json(msg="No secrets in Lockbox")
 
-                matching_secrets = [secret for secret in secrets_response['secrets'] if secret['name'] == secret_name]
-                secret_id = matching_secrets[0]['id']
+                matching_secrets = [
+                    secret for secret in secrets_response.secrets if secret.name == secret_name
+                ]
+
+                if len(matching_secrets) == 0:
+                    module.fail_json(msg=f"Secret with name '{secret_name}' not found")
+                elif len(matching_secrets) > 1:
+                    module.fail_json(msg=f"Secret with the same name already exists: {secret_name} \nPlease, set secret_id for update correct secret!")
+                
+                secret_id = matching_secrets[0].id
 
             secrets_response = get_secret(iam_token, secret_id)
-            secret_status = secrets_response['status']
+            secret_status_code = secrets_response.status
+            secret_status = STATUS_MAPPING.get(secret_status_code, "UNKNOWN_STATUS")
             if secret_status == 'INACTIVE':
                 activate_secret(iam_token, secret_id)
                 module.exit_json(changed=True)
