@@ -50,15 +50,13 @@ from grpc import RpcError
 from ansible.plugins.lookup import LookupBase
 from ansible.errors import AnsibleError
 
-# Проверка установленных модулей
 def check_module_installed(module_name):
     import importlib.util
     if importlib.util.find_spec(module_name) is None:
-        raise ImportError(f"Модуль '{module_name}' не установлен. Установите его с помощью 'pip install {module_name}'")
+        raise ImportError(f"The module '{module_name}' is not installed. Install it using 'pip install {module_name}'")
 
-# Проверяем наличие необходимых модулей
 try:
-    check_module_installed('jwt')  # PyJWT
+    check_module_installed('jwt') 
     check_module_installed('cryptography')
     check_module_installed('yandexcloud')
 except ImportError as e:
@@ -80,12 +78,12 @@ class LookupModule(LookupBase):
             with open(sa_key_file, 'r') as file:
                 private_key_data = json.load(file)
         except Exception as e:
-            raise AnsibleError(f"Ошибка чтения файла ключей: {str(e)}")
+            raise AnsibleError(f"Error reading key file: {str(e)}")
 
         required_fields = ['id', 'service_account_id', 'private_key']
         for field in required_fields:
             if field not in private_key_data:
-                raise AnsibleError(f"Отсутствует обязательное поле {field} в файле ключей")
+                raise AnsibleError(f"Missing required field {field} in the key file")
 
         private_key_id = private_key_data['id']
         service_account_id = private_key_data['service_account_id']
@@ -102,7 +100,7 @@ class LookupModule(LookupBase):
         try:
             jwt_token = jwt.encode(payload, private_key, algorithm='PS256', headers={'kid': private_key_id})
         except Exception as e:
-            raise AnsibleError(f"Ошибка формирования JWT: {str(e)}")
+            raise AnsibleError(f"Error generating JWT: {str(e)}")
 
         try:
             sdk = SDK(service_account_key=private_key_data)
@@ -114,16 +112,16 @@ class LookupModule(LookupBase):
             return iam_token
         
         except ValueError as e:
-            print(f"Ошибка валидации данных: {e}")
+            print(f"Data validation error: {e}")
             raise
         except FileNotFoundError as e:
-            print(f"Ошибка чтения файла: {e}")
+            print(f"File not found: {e}")
             raise
         except RpcError as e:
-            print(f"Ошибка RPC: {e}")
+            print(f"RPC error: {e}")
             raise
         except Exception as e:
-            print(f"Неизвестная ошибка: {e}")
+            print(f"Unknown error: {e}")
             raise
         
     def get_iam_token_from_oauth(self, oauth_token):
@@ -138,21 +136,21 @@ class LookupModule(LookupBase):
             return iam_token
         
         except ValueError as e:
-            print(f"Ошибка валидации данных: {e}")
+            print(f"Data validation error: {e}")
             raise
         except FileNotFoundError as e:
-            print(f"Ошибка чтения файла: {e}")
+            print(f"File not found: {e}")
             raise
         except RpcError as e:
-            print(f"Ошибка RPC: {e}")
+            print(f"RPC error: {e}")
             raise
         except Exception as e:
-            print(f"Неизвестная ошибка: {e}")
+            print(f"Unknown error: {e}")
             raise
 
     def run(self, terms, variables=None, **kwargs):
         if len(terms) < 2:
-            raise AnsibleError("Требуется указать тип аутентификации и значение (JWT файл или OAuth токен)")
+            raise AnsibleError("It is required to specify the authentication type and value (JWT file or OAuth token).")
 
         auth_type = terms[0]
         auth_value = terms[1]
@@ -163,7 +161,7 @@ class LookupModule(LookupBase):
             elif auth_type == 'oauth':
                 iam_token = self.get_iam_token_from_oauth(auth_value)
             else:
-                raise AnsibleError("Неподдерживаемый тип аутентификации. Используйте 'jwt' или 'oauth'.")
+                raise AnsibleError("Unsupported authentication type. Use 'jwt' or 'oauth'.")
             return [iam_token]
         except Exception as e:
-            raise AnsibleError(f"Ошибка получения IAM токена: {str(e)}")
+            raise AnsibleError(f"IAM token obtained using {auth_type}")

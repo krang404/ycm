@@ -113,8 +113,21 @@ id:
     returned: always
 '''
 
-
 import requests
+import yaml
+import sys
+
+def check_module_installed(module_name):
+    import importlib.util
+    if importlib.util.find_spec(module_name) is None:
+        raise ImportError(f"The module '{module_name}' is not installed. Install it using 'pip install {module_name}'")
+
+try:
+    check_module_installed('yandexcloud')
+except ImportError as e:
+    print(e)
+    sys.exit(1)
+
 import yaml
 from yandexcloud import SDK
 from yandex.cloud.lockbox.v1.secret_service_pb2 import CreateSecretRequest, ListSecretsRequest, \
@@ -240,7 +253,7 @@ def main():
     secret_data_file = module.params['secret_data_file']
     state = module.params['state']
     delete_protection = module.params['delete_protection']
-    # Mapping secret status for gRPC
+    
     STATUS_MAPPING = {
         0: "STATUS_UNSPECIFIED",
         1: "CREATING",

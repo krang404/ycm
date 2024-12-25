@@ -53,15 +53,13 @@ from time import time
 from ansible.plugins.lookup import LookupBase
 from ansible.errors import AnsibleError
 
-# Проверка установленных модулей
 def check_module_installed(module_name):
     import importlib.util
     if importlib.util.find_spec(module_name) is None:
-        raise ImportError(f"Модуль '{module_name}' не установлен. Установите его с помощью 'pip install {module_name}'")
+        raise ImportError(f"The module '{module_name}' is not installed. Install it using 'pip install {module_name}'")
 
-# Проверяем наличие необходимых модулей
 try:
-    check_module_installed('jwt')  # PyJWT
+    check_module_installed('jwt') 
     check_module_installed('cryptography')
     check_module_installed('yandexcloud')
 except ImportError as e:
@@ -82,22 +80,22 @@ class LookupModule(LookupBase):
         file_path = os.getenv('YC_SA_KEY_FILE_PATH')
 
         if file_path is None:
-            raise ValueError("Переменная окружения 'YC_SA_KEY_FILE_PATH' не установлена")
+            raise ValueError("The environment variable 'YC_SA_KEY_FILE_PATH' is not set")
 
         try:
             with open(file_path, 'r') as file:
                 file_content = file.read()
         except FileNotFoundError:
-            raise FileNotFoundError(f"Файл по пути '{file_path}' не найден")
+            raise FileNotFoundError(f"The file at path '{file_path}' was not found")
 
         try:
             sa_key_data = json.loads(file_content)
         except json.JSONDecodeError:
-            raise ValueError("Неверный формат файла: не удается распознать JSON")
+            raise ValueError("Invalid file format: unable to parse JSON")
 
         required_keys = {"id", "service_account_id", "private_key"}
         if not required_keys.issubset(sa_key_data):
-            raise ValueError("Неверный формат файла: отсутствуют необходимые ключи 'id', 'service_account_id' и 'private_key'")
+            raise ValueError("Invalid file format: missing required keys 'id', 'service_account_id', and 'private_key'")
 
         return sa_key_data
     
