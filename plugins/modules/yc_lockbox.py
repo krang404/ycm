@@ -273,6 +273,12 @@ def main():
         if len(version_payload_entries) > 32:
             raise ValueError("The number of keys in version_payload_entries exceeds the limit of 32.")
 
+        if module.check_mode:
+            module.exit_json(
+                changed=True,
+                msg=f"Check mode: Action '{state}' would be performed for secret '{secret_name}'"
+            )
+
         if state == 'present':
             if not secret_id:
                 secrets_response = list_secrets(iam_token, folder_id)
@@ -385,9 +391,7 @@ def main():
             else:
                 module.fail_json(msg=f"Activation impossble because secret is {secret_status} now!")
                     
-    except requests.exceptions.RequestException as e:
-        module.fail_json(msg=str(e))
-    except ValueError as e:
+    except Exception as e:
         module.fail_json(msg=str(e))
 
 if __name__ == '__main__':
