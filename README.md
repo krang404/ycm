@@ -1,20 +1,20 @@
-# ycm
+# Yandex Cloud Module (YCM)
 
-**ycm** is a collection of Ansible modules designed to interact with Yandex Cloud services, enabling automation of various cloud resource management tasks.
+Yandex Cloud Module (YCM) is an Ansible module designed to facilitate the management of Yandex Cloud resources. It provides functionalities to create, update, delete, activate, and deactivate secrets within Yandex Lockbox.
 
 ## Features
 
-- **Secret Management**: Create, update, activate, deactivate, and delete secrets in Yandex Lockbox.
-- **Payload Handling**: Support for managing secret payloads through direct dictionary inputs or YAML files.
-- **State Management**: Ensure secrets are in the desired state (`present`, `absent`, `update`, `deactivate`, `activate`).
-- **Idempotency**: Designed to prevent unnecessary changes if the desired state is already achieved.
+- **Create Secrets**: Easily create new secrets in Yandex Lockbox with specified parameters.  
+- **Update Secrets**: Update existing secrets by adding new versions with updated payload entries.  
+- **Delete Secrets**: Remove secrets from Yandex Lockbox.  
+- **Activate/Deactivate Secrets**: Change the status of secrets to active or inactive as needed.  
+- **Retrieve IAM Token**: Generate an IAM token dynamically using the `yc_iam_token` lookup plugin and a service account key file, simplifying authentication for Yandex Cloud API operations.  
 
 ## Requirements
 
-- Python 3.6 or higher
-- Ansible 2.9 or higher
-- `yandexcloud` Python SDK
-- `PyYAML` library
+- Python 3.10 or higher.
+- Ansible 2.9 or higher.
+- `yandexcloud` Python SDK.
 
 ## Installation
 
@@ -27,43 +27,63 @@
 2. **Install Dependencies**:
 
    ```bash
-   pip install yandexcloud pyyaml
+   pip install -r requirements.txt
    ```
-
-3. **Configure Ansible**:
-
-   Ensure that the `ycm` modules are in your Ansible module search path or specify the path in your playbooks.
 
 ## Usage
 
-Here's an example of how to use the `ycm` module in an Ansible playbook to create a secret in Yandex Lockbox:
+To use the Yandex Cloud Module in your Ansible playbooks, include it as a custom module.
+
+### Example Playbook
 
 ```yaml
-- name: Manage Yandex Lockbox Secret
+- name: Manage Yandex Cloud Secrets
   hosts: localhost
   tasks:
     - name: Create a new secret
       ycm:
-        iam_token: "{{ iam_token }}"
-        folder_id: "{{ folder_id }}"
-        secret_name: "my_secret"
-        secret_description: "This is a test secret"
+        iam_token: "{{ lookup('yc_iam_token', 'jwt', '/path/to/sa_key.json') }}"
+        folder_id: "your-folder-id"
+        secret_name: "example_secret"
+        secret_description: "An example secret"
         text_payload_entries:
           key1: "value1"
           key2: "value2"
         state: present
 ```
 
-**Parameters**:
+## Lookup Plugins
 
-- `iam_token` (required): IAM token for authenticating with Yandex Cloud.
-- `folder_id` (required for creating secrets): ID of the folder where the secret will reside.
-- `secret_name` (required): Name of the secret.
-- `secret_description` (optional): Description of the secret.
-- `text_payload_entries` (optional): Dictionary of key-value pairs to store in the secret.
-- `secret_data_file` (optional): Path to a YAML file containing secret data.
-- `state` (optional): Desired state of the secret. Choices are `present`, `absent`, `update`, `deactivate`, `activate`. Default is `present`.
-- `delete_protection` (optional): Boolean to enable or disable deletion protection. Default is `true`.
+YCM includes lookup plugins to fetch IAM tokens and secret values from Yandex Cloud.
+
+### `yc_iam_token` Lookup Plugin
+
+This plugin retrieves an IAM token using a service account key file.
+
+**Usage Example**:
+
+```yaml
+- name: Obtain IAM Token via SA-key
+  debug:
+    msg: "{{ lookup('yc_iam_token', 'jwt', '/path/to/sa_key.json') }}"
+
+- name: Obtain IAM Token via OAuth
+
+  debug:
+    msg: "{{ lookup('yc_iam_token', 'oauth', 'your_oauth_token') }}"
+```
+
+### `yc_lockbox` Lookup Plugin
+
+This plugin fetches secret values from Yandex Lockbox.
+
+**Usage Example**:
+
+```yaml
+- name: Retrieve secret value
+  debug:
+    msg: "{{ lookup('yc_lockbox', 'secret-id', iam_token) }}"
+```
 
 ## Error Handling
 
