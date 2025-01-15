@@ -1,14 +1,21 @@
-# Yandex Cloud Module (YCM)
+# Yandex Cloud Modules (YCM)
 
-Yandex Cloud Module (YCM) is an Ansible module designed to facilitate the management of Yandex Cloud resources. It provides functionalities to create, update, delete, activate, and deactivate secrets within Yandex Lockbox.
+**YCM** is a collection of Ansible modules designed to manage Yandex Cloud resources for tasks not covered by the Terraform provider. 
 
 ## Features
 
-- **Create Secrets**: Easily create new secrets in Yandex Lockbox with specified parameters.  
-- **Update Secrets**: Update existing secrets by adding new versions with updated payload entries.  
-- **Delete Secrets**: Remove secrets from Yandex Lockbox.  
-- **Activate/Deactivate Secrets**: Change the status of secrets to active or inactive as needed.  
-- **Retrieve IAM Token**: Generate an IAM token dynamically using the `yc_iam_token` lookup plugin and a service account key file, simplifying authentication for Yandex Cloud API operations.  
+Currently, modules for working with **Lockbox** and **IAM** are implemented, and new modules are added as they are developed.  
+
+### Key Features:
+- **Secret creation**: Easily create new secrets in Yandex Lockbox with specified parameters.  
+- **Secret updates**: Add new versions to existing secrets with updated data.  
+- **Secret deletion**: Delete secrets from Yandex Lockbox.  
+- **Activate/Deactivate secrets**: Change the status of secrets to active or inactive as needed.  
+- **Retrieve IAM token**: Use the `yc_iam_token` lookup plugin to dynamically retrieve an IAM token using a service account key file, simplifying authentication for Yandex Cloud API operations.  
+
+---  
+
+Let me know if you need further refinements!
 
 ## Requirements
 
