@@ -30,7 +30,7 @@ Currently, modules for working with **Lockbox** and **IAM** are implemented, and
 2. **Install Dependencies**:
 
    ```bash
-   pip install -r requirements.txt
+   pip install yandexcloud
    ```
 
 ## Usage
@@ -90,7 +90,7 @@ This plugin fetches secret values from Yandex Lockbox.
 
 ## Error Handling
 
-The module includes error handling to manage exceptions that may occur during API interactions. If an error is encountered, the module will fail gracefully, providing an appropriate error message.
+The modules include error handling to manage exceptions that may occur during API interactions. If an error is encountered, the module will fail gracefully, providing an appropriate error message.
 
 ## Contributing
 
