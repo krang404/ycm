@@ -115,6 +115,7 @@ id:
 
 import yaml
 import sys
+import os
 
 def check_module_installed(module_name):
     import importlib.util
@@ -263,7 +264,8 @@ def main():
         combined_secret_data = text_payload_entries.copy()
 
         if secret_data_file:
-            secret_data_from_file = load_secret_data_file(secret_data_file)
+            real_path = os.path.realpath(secret_data_file)
+            secret_data_from_file = load_secret_data_file(real_path)
             for key in secret_data_from_file:
                 if key in combined_secret_data:
                     module.fail_json(msg=f"Duplicate key '{key}' found in both text_payload_entries and secret_data_file.")
