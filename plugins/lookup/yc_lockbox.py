@@ -130,10 +130,12 @@ class LookupModule(LookupBase):
 
         secret_id = terms[0]
         key = terms[1]
-        token_type = terms[2] if len(terms) == 3 else 'sa'
+        token_type = terms[2] if len(terms) == 3 else 'iam'
             
         if token_type == 'iam':
-            iam_token = self.get_iam_token()
+            iam_token = os.getenv('YC_IAM_TOKEN')
+            if iam_token is None or iam_token.strip() == "":
+                iam_token = self.get_iam_token()
             sdk = SDK(iam_token=iam_token)
         elif token_type == 'oauth':
             oauth_token = os.getenv('YC_OAUTH_TOKEN')
