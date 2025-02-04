@@ -44,6 +44,7 @@ RETURN = '''
 import json
 import sys
 import os
+import requests as rq
 from time import time
 from grpc import RpcError
 
@@ -148,6 +149,25 @@ class LookupModule(LookupBase):
             print(f"Unknown error: {e}")
             raise
 
+    def get_iam_from_metadata(self):
+        try:
+            url= 'http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token'
+            payload = {
+                'recursive': 'true'
+            }
+            headers = {
+                'Metadata-Flavor': 'Google'
+            }
+            response = rq.get(url, params=payload, headers=headers)
+            metadata = response.json()
+            iam_token = metadata["access_token"]
+
+            return iam_token
+        
+        except Exception as e:
+            print(f"Unknown error: {e}")
+            raise
+
     def run(self, terms, variables=None, **kwargs):
         if len(terms) < 2:
             raise AnsibleError("It is required to specify the authentication type and value (JWT file or OAuth token).")
@@ -160,8 +180,10 @@ class LookupModule(LookupBase):
                 iam_token = self.get_iam_token_from_jwt(auth_value)
             elif auth_type == 'oauth':
                 iam_token = self.get_iam_token_from_oauth(auth_value)
+            elif auth_type == 'metadata':
+                iam_token = self.get_iam_from_metadata()    
             else:
-                raise AnsibleError("Unsupported authentication type. Use 'jwt' or 'oauth'.")
+                raise AnsibleError("Unsupported authentication type. Use 'jwt','oauth' or 'metadata'.")
             return [iam_token]
         except Exception as e:
             raise AnsibleError(f"IAM token obtained using {auth_type}")
