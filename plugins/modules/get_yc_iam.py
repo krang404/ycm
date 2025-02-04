@@ -3,6 +3,7 @@
 import json
 import sys
 import os
+import requests as rq
 from time import time
 
 from ansible.module_utils.basic import AnsibleModule
@@ -102,10 +103,30 @@ def get_iam_token_from_oauth(oauth_token):
             print(f"Unknown error: {e}")
             raise
 
+def get_iam_from_metadata():
+    try:
+        url= 'http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token'
+        payload = {
+            'recursive': 'true',
+            'alt': 'json'
+        }
+        headers = {
+            'Metadata-Flavor': 'Google'
+        }
+        response = rq.get(url, params=payload, headers=headers)
+        metadata = response.json()
+        iam_token = metadata["access_token"]
+
+        return iam_token
+    
+    except Exception as e:
+        print(f"Unknown error: {e}")
+        raise
+
 def run_module():
     module_args = dict(
-        auth_type=dict(type='str', required=True, choices=['jwt', 'oauth']),
-        auth_value=dict(type='str', required=True)
+        auth_type=dict(type='str', required=True, choices=['jwt', 'oauth', 'metadata']),
+        auth_value=dict(type='str', required=False, default='', no_log=True)
     )
 
     result = dict(
@@ -127,8 +148,10 @@ def run_module():
             iam_token = get_iam_token_from_jwt(auth_value)
         elif auth_type == 'oauth':
             iam_token = get_iam_token_from_oauth(auth_value)
+        elif auth_type == 'metadata':
+            iam_token = get_iam_from_metadata()    
         else:
-            module.fail_json(msg="Unsupported authentication type. Use 'jwt' or 'oauth'.")
+            module.fail_json(msg="Unsupported authentication type. Use 'jwt', 'oauth' or 'metadata'.")
         
         result['changed'] = True
         result['original_message'] = f"IAM token obtained using {auth_type}"
@@ -136,7 +159,7 @@ def run_module():
     except Exception as e:
         module.fail_json(msg=str(e))
 
-    module.exit_json(**result)
+    module.exit_json(**result, no_log=True)
 
 def main():
     run_module()
